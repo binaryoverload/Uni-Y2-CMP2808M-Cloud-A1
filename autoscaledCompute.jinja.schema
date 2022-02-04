@@ -1,0 +1,79 @@
+info:
+  title: Compute Template
+  author: William Oldham
+  description: 
+  version: 1.0
+
+imports:
+- path: autoscaledCompute.jinja
+
+required:
+- machineType
+- imageProject
+- imageFamily
+- region
+- networkName
+
+properties:
+  machineType:
+    type: string
+    description: The type of the machine that the instance template
+  imageProject:
+    type: string
+    description: The project for the machine source image
+  imageFamily:
+    type: string
+    description: The family for the machine source image
+  region:
+    type: string
+    description: The region used for the autoscaler and regional instance group manager
+  networkName:
+    type: string
+    description: The name of the network to be used for the VMs
+  subNetworkName:
+    type: string
+    description: The name of the subnetwork to be used for the VMs
+  targetPoolName:
+    type: string
+    description: The name of the target pool for the VMs to be apart of
+  minSize:
+    type: integer
+    description: The minimum number of VMs the instance group manager will deploy
+    minimum: 1
+    default: 1
+  initialTargetSize:
+    type: integer
+    description: The number of instances to be created as soon as the instance group manager becomes active.
+    minimum: 0
+    maximum: 2000 # Same as the maximum for the max size specified below
+    default: 1
+  maxSize:
+    type: integer
+    description: The maximum number of VMs the instance group manager will deploy
+    minimum: 1
+    # Max size of 2000 is specified as that is the upper limit for a regional instance group manager
+    # Source: https://cloud.google.com/compute/docs/instance-groups/distributing-instances-with-regional-instance-groups#limitations
+    maximum: 2000 
+    default: 1
+  cpuTarget:
+    type: number
+    description: A decimal value between 0 (0%, exclusive) and 1 (100%, inclusive) that % cpu target will be targetted 
+    minimumExclusive: 0
+    maximum: 1
+    default: 0.75
+  autoscaleCooldown:
+    type: integer
+    description: Number of seconds before GCP starts recording metrics from a VM to decide whether to autoscale or not.
+    minimumExclusive: 0
+    default: 60
+  ports:
+    type: array
+    description: The ports on which the application will be running which will be exposed to the LB
+    items:
+      type: integer
+  startupScript:
+    type: string
+    description: The script to be used for 
+  
+
+  

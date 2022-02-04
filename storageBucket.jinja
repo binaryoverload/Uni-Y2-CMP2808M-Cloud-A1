@@ -1,0 +1,8 @@
+# Defines a simple storage bucket that could be connected to
+
+resources:
+-   name: {{ env["name"] }}
+    type: storage.v1.bucket
+    properties:
+        storageClass: {{ properties["storageClass"] }}
+        location: {{ properties["location"] }}

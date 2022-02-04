@@ -1,0 +1,16 @@
+resources:
+- name: {{ env["name"] }}
+  type: compute.v1.network
+  properties:
+    autoCreateSubnetworks: false # We don't want GCP to auto-create subnetworks as they will be created below
+
+# For each subnetwork specified in the properties (With a unique name, used to verify duplicates haven't been passed in)
+# This uses a Jinja2 filter to filter out entries with a duplicate "name" property
+{% for subnetwork in properties["subnetworks"]|unique(attribute='name') %}
+- name: {{ subnetwork.name }}
+  type: compute.v1.subnetwork
+  properties:
+    region: {{ subnetwork.region }} # The region that the subnetwork should be created in
+    network: $(ref.{{ env["name"] }}.selfLink) # A URL link to the network created above in the file. All subnetworks will be a member of this network.
+    ipCidrRange: {{ subnetwork.ipCidrRange }} # The IP CIDR range to be used for the subnetwork
+{% endfor %}

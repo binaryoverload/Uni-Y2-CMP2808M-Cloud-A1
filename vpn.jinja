@@ -1,0 +1,104 @@
+# Reference material for this template has been taken from:
+# https://github.com/GoogleCloudPlatform/deploymentmanager-samples/blob/master/examples/v2/vpn_auto_subnet/vpn-auto-subnet.jinja
+
+{% set REGION = properties["region"] %}
+
+{% set FR_NAME = env["name"] + "-fr"  %}
+{% set ADDRESS = env["name"] + "-address" %}
+{% set FIREWALL = env["name"] + "-firewall-rule" %}
+{% set ROUTE = env["name"] + "-route" %}
+{% set NETWORK = properties["networkName"] %}
+{% set SUB_NETWORK = properties["subNetworkName"] %}
+
+{% set PEER_IP = properties["peerIp"] %}
+{% set PEER_SUBNETS = properties["peerSubnets"] %}
+
+{% set VPN_GATEWAY = env["name"] + "-gateway" %}
+{% set VPN_TUNNEL = env["name"] + "-tunnel" %}
+{% set IKE_VERSION = properties["ikeVersion"] %}
+
+{% set SECRET = properties["vpnSecret"] %}
+
+# The external address that the on-prem VPN gateway will connect to
+# This address is used in all the forwarding rules.
+resources:
+-   type: compute.v1.address
+    name: {{ ADDRESS }}
+    properties:
+        region: {{ REGION }}
+
+# The below three forwarding rules are the protocols/ports required for IKEv2 IPsec VPN
+# ESP (IP 50), UDP port 500, UDP port 4500
+#
+# These forwarding rules allow incoming traffic on the above ports to come in on the external address
+# that was created and then forwarded to the VPN gateway over the internal GCP network. This has the effect
+# of acting like a static NAT system since there is only a single VPN gateway it is pointed to.
+-   type: compute.v1.forwardingRules
+    name: {{ FR_NAME }}-esp
+    properties:
+        region: {{ REGION }}
+        IPProtocol: ESP
+        IPAddress: $(ref.{{ ADDRESS }}.address)
+        target: $(ref.{{ VPN_GATEWAY }}.selfLink)
+
+-   type: compute.v1.forwardingRules
+    name: {{ FR_NAME }}-udp500
+    properties:
+        region: {{ REGION }}
+        IPProtocol: UDP
+        portRange: 500
+        IPAddress: $(ref.{{ ADDRESS }}.address)
+        target: $(ref.{{ VPN_GATEWAY }}.selfLink)
+
+-   type: compute.v1.forwardingRules
+    name: {{ FR_NAME }}-udp4500
+    properties:
+        region: {{ REGION }}
+        IPProtocol: UDP
+        portRange: 4500
+        IPAddress: $(ref.{{ ADDRESS }}.address)
+        target: $(ref.{{ VPN_GATEWAY }}.selfLink)
+
+# Forms the tunnel between the GCP network and the on-site VPN network
+-   type: compute.v1.vpnTunnel
+    name: {{ VPN_TUNNEL }}
+    properties:
+        region: {{ REGION }}
+        ikeVersion: {{ IKE_VERSION }}
+        forwardingRule: $(ref.{{ FR_NAME }}-udp4500.selfLink)
+        peerIp: {{ PEER_IP }} # The external peer IP address of the on-premise VPN gateway
+        sharedSecret: {{ SECRET }} # The shared secret which is used to securely establish a VPN connection with the on-premise
+        targetVpnGateway: $(ref.{{ VPN_GATEWAY }}.selfLink) # The VPN gateway which this tunnel is associated to
+        localTrafficSelector: 
+        -   $(ref.{{ SUB_NETWORK }}.ipCidrRange) # Selects the traffic local to GCP to be routed over the VPN connection
+
+# The Classic VPN gateway in GCP that the on-premise VPN gateway will form a connection to
+-   type: compute.v1.targetVpnGateway
+    name: {{ VPN_GATEWAY }}
+    properties:
+        region: {{ REGION }}
+        network: $(ref.{{ NETWORK }}.selfLink)
+
+# Firewall rule to allow all tcp, udp and icmp packets over the VPN tunnel into GCP
+# This is important to allow 
+-   type: compute.v1.firewall
+    name: {{ FIREWALL }}
+    properties:
+        network: $(ref.{{ NETWORK }}.selfLink) # Firewall rule is applied to the same GCP network which has been used for all the VPN resources 
+        sourceRanges: {{ PEER_SUBNETS }} # The array of on-premise subnets which will be permitted over the VPN 
+        allowed:
+        -   IPProtocol: tcp
+        -   IPProtocol: udp
+        -   IPProtocol: icmp
+
+# We need to create a route for each on-prem subnet so that GCP knows to use the VPN tunnel as the next hop
+# Each route is named with the subnet as a suitable prefix so: 192.168.0.0/24 -> 192-168-0-0-24
+{% for subnet in PEER_SUBNETS %}
+-   type: compute.v1.route
+    name: {{ ROUTE }}-{{ subnet|replace(".","-")|replace("/","-") }} # Replaces all . and / with a hypen -
+    properties:
+        network: $(ref.{{ NETWORK }}.selfLink)
+        nextHopVpnTunnel: $(ref.{{ VPN_TUNNEL }}.selfLink) # A selfLink to the VPN tunnel to use it as the next hop for the destination range
+        priority: 50
+        destRange: {{ subnet }} # The destination range to be targetted by the route
+{% endfor %}

@@ -1,0 +1,22 @@
+# info:
+#   title: Storage Bucket Template
+#   author: William Oldham
+#   description: 
+#   version: 1.0
+
+# imports:
+# - path: storageBucket.jinja
+
+# required:
+# - location
+
+# properties:
+#   storageClass:
+#     type: string
+#     enum: ["STANDARD", "NEARLINE", "COLDLINE", "ARCHIVE"]
+#     default: "STANDARD"
+#     description: The type of storage bucket to use. Defaults to STANDARD
+#   location:
+#     type: string
+#     description: The location of the storage bucket. Regions, multi-regions or dual-regions can be specified.
+  

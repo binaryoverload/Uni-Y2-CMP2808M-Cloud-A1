@@ -1,0 +1,82 @@
+{% set RIGM_NAME = env["name"] + "-rigm" %}
+{% set IT_NAME = env["name"] + "-it" %}
+{% set AS_NAME = env["name"] + "-as" %}
+{% set REGION = properties["region"] %}
+
+resources:
+
+# This template will be used whenever a new VM needs to be created as part of the managed instance group.
+-   name: {{ IT_NAME }}
+    type: compute.v1.instanceTemplate
+    properties:
+        properties:
+            machineType: {{ properties['machineType'] }}
+            metadata:
+                items:
+                # For more ways to use startup scripts on an instance, see:
+                #   https://cloud.google.com/compute/docs/startupscript
+                -   key: startup-script
+                    value: |
+                        {{ properties["startupScript"]|indent(25) }}
+            disks:
+            -   deviceName: boot
+                boot: true
+                type: PERSISTENT
+                autoDelete: true
+                mode: READ_WRITE
+                initializeParams:
+                    # Initialises a source image based off the provided image project and family
+                    sourceImage: projects/{{ properties["imageProject"] }}/global/images/family/{{ properties["imageFamily"] }}
+            # Links each created VM to the specified network + subnetwork combination
+            networkInterfaces:
+            -   network: $(ref.{{ properties['networkName'] }}.selfLink)
+                subnetwork: $(ref.{{ properties["subNetworkName"] }}.selfLink)
+                accessConfigs:
+                -   name: External NAT
+                    type: ONE_TO_ONE_NAT
+
+# If there are any application ports, create a firewall rule to allow these to the VM
+{% if properties["ports"] %}
+- name: {{ env['name'] }}-firewall-rule
+  type: compute.v1.firewall
+  properties:
+    network: $(ref.{{ properties['networkName'] }}.selfLink)
+    sourceRanges: ["0.0.0.0/0"]
+    allowed:
+    - IPProtocol: TCP
+      ports: {{ properties['ports'] }}
+{% endif %}
+
+# The regional instance group manager manages all the instances and handles the creations of
+# new ones according to the autoscaler's autoscaling policy. 
+
+# This uses the template defined above to create new instances and has an inital target size as a property.
+-   name: {{ RIGM_NAME }}
+    type: compute.v1.regionInstanceGroupManager
+    properties:
+        baseInstanceName: {{ RIGM_NAME }}-instance # The name that will be used for instances with an additional random suffix added by GCP
+        instanceTemplate: $(ref.{{ IT_NAME }}.selfLink) # The template to use to create instances
+        region: {{ REGION }}
+        targetSize: {{ properties['initialTargetSize'] }} # The number of instances the the instance group manager should aim to have.
+        # Only add a target pool if one has been specified. Allows this template to be used without a load balancer if required.
+        {% if properties["targetPoolName"] %}
+        targetPools: # The target pool that any VMs will be added to for load balancing
+        -   $(ref.{{ properties['targetPoolName'] }}.selfLink)
+        {% endif %}
+        updatePolicy:
+            type: PROACTIVE # Makes the group try and spread VMs evenly across different zones in the region
+
+# The autoscaler will add/remove instances as required when the average CPU usage goes above or below the target
+-   name: {{ AS_NAME }}
+    type: compute.v1.regionAutoscalers
+    properties:
+        autoscalingPolicy:
+            minNumReplicas: {{ properties["minSize"] }} # Minimum amount of allowed replicas
+            maxNumReplicas: {{ properties["maxSize"] }} # Maximum amount of allowed replicas
+            cpuUtilization:
+                utilizationTarget: {{ properties["cpuTarget"] }} # The decimal target that will be compared against
+            # How many seconds before GCP starts recording metrics from a VM to decide whether to autoscale or not.
+            # Is used to avoid scaling up VMs for a system startup procedure
+            coolDownPeriodSec: {{ properties["autoscaleCooldown"] }} 
+        target: $(ref.{{ RIGM_NAME }}.selfLink)
+        region: {{ REGION }}

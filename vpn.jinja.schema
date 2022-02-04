@@ -1,0 +1,48 @@
+info:
+  title: VPN Template
+  author: William Oldham
+  description: 
+  version: 1.0
+
+imports:
+- path: vpn.jinja
+
+required:
+- region
+- networkName
+- subNetworkName
+- peerIp
+- peerSubnets
+- vpnSecret
+
+properties:
+  region:
+    type: string
+    description: The region in which the VPN will exist
+  networkName:
+    type: string
+    description: The name of the GCP network to connect to
+  subNetworkName:
+    type: string
+    description: The name of the GCP subnetwork to connect to
+  peerIp:
+    type: string
+    format: ipv4
+    description: The external IPv4 address of the peer VPN
+  peerSubnets:
+    type: array
+    description: The subnets in the peer network
+    items:
+      type: string
+      # Validates the input to be an IPv4 Address with a CIDR suffix
+      pattern: ^(([01]?[0-9]?[0-9]|2[0-5][0-5])(\.|)){4}\/([1-2]?[0-9]|3[0-2])$
+  ikeVersion:
+    type: integer
+    description: The version of IKEv2
+    default: 2
+    minimum: 1
+    maximum: 2
+  vpnSecret:
+    type: string
+    description: The shared secret to authenticate the VPN peer 
+    

@@ -1,0 +1,47 @@
+info:
+  title: Load Balancer Template
+  author: William Oldham
+  description: 
+  version: 1.0
+
+imports:
+- path: loadBalancer.jinja
+
+required:
+- healthChecks
+- region
+- port
+
+properties:
+    targetPoolSuffix:
+        type: string
+        description: The name suffix to use for the target pool
+        default: tp
+    forwardingRuleSuffix:
+        type: string
+        description: The name suffix to use for the forwarding rule
+        default: fr
+    port:
+        type: integer
+        description: The port the forwarding rule will use to receive requests and connect to VMs
+    healthChecks:
+        type: array
+        items:
+            type: object
+            required:
+            -   name
+            -   properties
+            properties:
+                name:
+                    type: string
+                    description: The name for the health check
+                properties:
+                    type: object
+                    properties:
+                        port:
+                            type: integer
+                            description: The port to do the health check on
+                        requestPath:
+                            type: string
+                            description: The path to run the health check on 
+  

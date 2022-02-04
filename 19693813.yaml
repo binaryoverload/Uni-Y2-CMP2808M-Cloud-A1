@@ -1,0 +1,124 @@
+imports:
+- path: network.jinja
+- path: autoscaledCompute.jinja
+- path: loadBalancer.jinja
+- path: vpn.jinja
+- path: storageBucket.jinja
+
+resources:
+- name: vm-network
+  type: network.jinja
+  properties:
+    diskspace: '250'
+    subnetworks:
+    - name: vm-network-eu-west2
+      region: europe-west2
+      ipCidrRange: 10.28.160.0/20
+    - name: vm-network-eu-west1
+      region: europe-west1
+      ipCidrRange: 10.29.160.0/20
+
+# Europe-West2 Region Resources
+- name: autoscaled-compute-west2
+  type: autoscaledCompute.jinja
+  properties:
+    machineType: f1-micro
+    imageProject: debian-cloud
+    imageFamily: debian-9
+    region: europe-west2
+    minSize: 1
+    maxSize: 2
+    cpuTarget: 0.75
+    networkName: vm-network
+    subNetworkName: vm-network-eu-west2
+    targetPoolName: load-balancing-west2-tp
+    ports: [80]
+    # Creates an Apache server and hosts a Hello world HTML file
+    # This file can be accessed through the load balancer's external IP
+    startupScript: |
+      #! /bin/bash
+      apt update
+      apt -y install apache2
+      cat <<EOF > /var/www/html/index.html
+      <html><body><h1>Hello World</h1>
+      <p>This page was created from a startup script.</p>
+      </body></html>
+      EOF
+- name: load-balancing-west2
+  type: loadBalancer.jinja
+  properties:
+    targetPoolSuffix: tp
+    forwardingRuleSuffix: fr
+    region: europe-west2
+    port: 80
+    healthChecks:
+    - name: http-health-check-west2
+      properties:
+        port: 80
+        requestPath: /
+- name: vpn-eu-west2
+  type: vpn.jinja
+  properties:
+    region: europe-west2
+    networkName: vm-network
+    subNetworkName: vm-network-eu-west2
+    peerIp: 34.35.52.55
+    peerSubnets:
+    - 10.30.160.0/20
+    vpnSecret: xrRJsmhzNCPpJtUFvXjssVpDPsaKsipHYsNfsvVrkfZBTbMHDRVWAhMRyjGwdGii
+
+# Europe-West1 Region Resources
+- name: autoscaled-compute-west1
+  type: autoscaledCompute.jinja
+  properties:
+    machineType: f1-micro
+    imageProject: debian-cloud
+    imageFamily: debian-9
+    region: europe-west1
+    minSize: 1
+    maxSize: 2
+    cpuTarget: 0.75
+    networkName: vm-network
+    subNetworkName: vm-network-eu-west1
+    targetPoolName: load-balancing-west1-tp
+    ports: [80]
+    # Creates an Apache server and hosts a Hello world HTML file
+    # This file can be accessed through the load balancer's external IP
+    startupScript: |
+      #! /bin/bash
+      apt update
+      apt -y install apache2
+      cat <<EOF > /var/www/html/index.html
+      <html><body><h1>Hello World</h1>
+      <p>This page was created from a startup script.</p>
+      </body></html>
+      EOF
+- name: load-balancing-west1
+  type: loadBalancer.jinja
+  properties:
+    targetPoolSuffix: tp
+    forwardingRuleSuffix: fr
+    region: europe-west1
+    port: 80
+    healthChecks:
+    - name: http-health-check-west1
+      properties:
+        port: 80
+        requestPath: /
+- name: vpn-eu-west1
+  type: vpn.jinja
+  properties:
+    region: europe-west1
+    networkName: vm-network
+    subNetworkName: vm-network-eu-west1
+    peerIp: 34.35.52.55
+    peerSubnets:
+    - 10.31.160.0/20
+    vpnSecret: joikvdooqigmmusiectyjdyubbrkvntvngcgcytspjpnlwgptzzotkdlgyzdcyrf
+
+
+- name: 3466add1-4baa-4542-8ff8-8cbe06fbc3b5
+  type: storageBucket.jinja
+  properties:
+    storageClass: STANDARD
+    location: EU

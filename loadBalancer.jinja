@@ -1,0 +1,31 @@
+{% set TP_NAME = env["name"] + "-" + properties["targetPoolSuffix"] %}
+{% set FR_NAME = env["name"] + "-" + properties["forwardingRuleSuffix"] %}
+{% set REGION = properties["region"] %}
+resources:
+# A http health check 
+{% for healthCheck in properties["healthChecks"]|unique(attribute="name") %}
+- name: {{ healthCheck.name }}
+  # Only legacy httpHealthChecks can be used with a target pool, hence it is hardcoded here
+  # https://cloud.google.com/compute/docs/reference/rest/v1/targetPools#resource:-targetpool
+  type: compute.v1.httpHealthCheck 
+  properties: {{ healthCheck.properties }}
+{% endfor %}
+
+# Target pool that compute instances can be added to be load balanced
+- name: {{ TP_NAME }}
+  type: compute.v1.targetPool
+  properties:
+    region: {{ REGION }}
+    healthChecks: 
+    {% for healthCheck in properties["healthChecks"]|unique(attribute="name") %}
+    - $(ref.{{ healthCheck.name }}.selfLink)
+    {% endfor %}
+
+# Forwarding rule that is a regional load balancer
+# for all the compute instances present in the target pool
+- name: {{ FR_NAME }}
+  type: compute.v1.forwardingRule
+  properties:
+    region: {{ REGION }}
+    portRange: {{ properties["port"] }}
+    target: $(ref.{{ TP_NAME }}.selfLink)
