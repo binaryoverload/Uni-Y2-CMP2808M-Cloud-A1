@@ -1,0 +1,26 @@
+William, please see the following feedback comments and grades for the assessment criteria. 
+
+C1: 
+Your YAML file evidences innovative thinking for the selected cloud resources as well as demonstrating best practices. 
+Both IaaS and PaaS services have been carefully considered for selection and have been configured in the YAML file to demonstrate excellent reusability with the associated template files.
+This is a very strong effort contextualised to the business case presented in the briefing document.
+Verbose code commenting is present.
+An excellent piece of development work. 
+
+85%
+
+C2: 
+Your templates files demonstrate innovative and excellent underpinning knowledge of advanced infrastructure-as-code approaches using well-informed deployment manager techniques.
+All aspects of the code design, implementation, and deployment process are applied using appropriately scoped cloud services.
+Reusability and customisation of templates is evidenced throughout, including data passing and best practice use of variables.
+Schema files are also evidenced to a good and meaningful standard and used throughout the majority of service deployments.
+A well-informed range of regional and multi-regional cloud PaaS and IaaS services have been deployed to an excellent standard that demonstrates strong conceptual understanding of cloud service concepts.
+Verbose code commenting is present. 
+Well done on achieving this very high standard of work! 
+
+85% 
+
+This is an excellent submission that goes well beyond the workshop materials and demonstrates a deep understanding of the more advanced concepts of deploying cloud service infrastructure. 
+The use of combining instance groups, load balancers, and VPNs is particularly challenging to configure correctly - well done!
+
+Total = 0.30*85+0.70*85 = 85
